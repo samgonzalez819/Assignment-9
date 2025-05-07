@@ -1,0 +1,148 @@
+// Assigment 9: Data Structures
+// Name: Samantha Gonzalez
+// Date: 05/01/2025
+#include <iostream>
+#include <vector>
+using namespace std;
+
+//The range for number of keys
+constexpr int T = 2;
+
+//B-Tree Node
+struct BTreeNode {
+    vector<int> keys;
+    vector<BTreeNode*> children;
+    bool isLeaf;
+
+    explicit BTreeNode(const bool leaf) : isLeaf(leaf) {}
+
+    ~BTreeNode() {
+        for (const auto child : children) {
+            delete child;
+        }
+    }
+};
+
+//B-Tree ADT
+struct BTree {
+    BTreeNode* root;
+
+    BTree() : root(nullptr) {}
+
+    ~BTree() {
+        delete root;
+    }
+};
+
+//Helper function
+void splitChild(BTreeNode* parent, int i, BTreeNode* child) {
+    auto* newNode = new BTreeNode(child->isLeaf);
+
+    //Move T-1 keys to new node
+    for (int j = 0; j < T - 1; ++j) {
+        newNode->keys.push_back(child->keys[j + T]);
+    }
+
+    //Move T children if not a leaf statement
+    if (!child->isLeaf) {
+        for (int j = 0; j < T; ++j) {
+            newNode->children.push_back(child->children[j + T]);
+        }
+    }
+
+    //Reduce the number of keys in child
+    child->keys.resize(T - 1);
+    if (!child->isLeaf) {
+        child->children.resize(T);
+    }
+
+    //Insert new child to parent
+    parent->children.insert(parent->children.begin() + i + 1, newNode);
+
+    //Insert middle key to parent
+    parent->keys.insert(parent->keys.begin() + i, child->keys[T - 1]);
+}
+
+//Insert into non-full node
+void insertNonFull(BTreeNode* node, int key) {
+    int i = static_cast<int>(node->keys.size()) - 1;
+
+    if (node->isLeaf) {
+        node->keys.push_back(0);
+        while (i >= 0 && key < node->keys[i]) {
+            node->keys[i + 1] = node->keys[i];
+            i--;
+        }
+        node->keys[i + 1] = key;
+    } else {
+        while (i >= 0 && key < node->keys[i]) {
+            i--;
+        }
+        i++;
+        if (node->children[i]->keys.size() == 2 * T - 1) {
+            splitChild(node, i, node->children[i]);
+            if (key > node->keys[i]) {
+                i++;
+            }
+        }
+        insertNonFull(node->children[i], key);
+    }
+}
+
+//Insert function
+bool insertBminustree(int key, BTree* tree) {
+    if (tree == nullptr) return false;
+    if (tree->root == nullptr) {
+
+        //Allocate root
+        tree->root = new BTreeNode(true);
+        tree->root->keys.push_back(key);
+        return true;
+    } else {
+        if (tree->root->keys.size() == 2 * T - 1) {
+            auto* newRoot = new BTreeNode(false);
+            newRoot->children.push_back(tree->root);
+            splitChild(newRoot, 0, tree->root);
+
+            int i = (key > newRoot->keys[0]) ? 1 : 0;
+            insertNonFull(newRoot->children[i], key);
+
+            tree->root = newRoot;
+        } else {
+            insertNonFull(tree->root, key);
+        }
+        return true;
+    }
+}
+
+//Inorder traversal for output
+void inorderTraversal(const BTreeNode* node) {
+    if (node == nullptr) return;
+
+    size_t i;
+    for (i = 0; i < node->keys.size(); ++i) {
+        if (!node->isLeaf) inorderTraversal(node->children[i]);
+        cout << node->keys[i] << " ";
+    }
+    if (!node->isLeaf) inorderTraversal(node->children[i]);
+}
+
+//Final Output
+int main() {
+    BTree tree;
+
+    insertBminustree(10, &tree);
+    insertBminustree(20, &tree);
+    insertBminustree(5, &tree);
+    insertBminustree(15, &tree);
+    insertBminustree(25, &tree);
+    insertBminustree(30, &tree);
+    insertBminustree(40, &tree);
+    insertBminustree(35, &tree);
+
+    cout << "Inorder traversal of B-Tree: ";
+    inorderTraversal(tree.root);
+    cout << endl;
+
+    return 0;
+}
